@@ -54,10 +54,75 @@ python run.py --test --data_dir $EXP_DIR/test-text --m2_dir $EXP_DIR/test-m2 --m
 ```
 7. [Evaluate](#evaluation) the test prediction. Replace test_output with $EXP_DIR/outputs/test.out
 
+## Advanced GNN-based system combination
+
+The latest version of `run.py` adds a relation-aware GNN scorer with contextual reasoning, dual output heads (keep probability + ranking priority), early stopping, and flexible hypothesis filtering. Two new flags are particularly useful when experimenting with different base system subsets:
+
+- `--max_hypotheses N` &mdash; only use the first *N* hypothesis files (in the order stored in `vocab.idx`).
+- `--hypotheses name1,name2,...` &mdash; explicitly enumerate the hypothesis files to include.
+
+To explore this space efficiently we provide `grid_search_gnn.py`, which trains/evaluates many configurations in parallel (one GPU process per configuration). The commands below reproduce our sweeps:
+
+```bash
+# CoNLL-2014 sweep (main setting with priority loss and optional global node)
+python grid_search_gnn.py \
+    --exp_dir conll-exp \
+    --gold_m2 conll14st-test-corrected.m2 \
+    --layers 2 3 \
+    --context_layers_list 0 1 \
+    --lr_list 0.01 \
+    --priority_loss_weights 0.8 \
+    --session main
+
+# CoNLL-2014 ablation without contextual/global node information
+python grid_search_gnn.py \
+    --exp_dir conll-exp \
+    --gold_m2 conll14st-test-corrected.m2 \
+    --layers 2 3 \
+    --context_layers_list 0 1 \
+    --lr_list 0.01 \
+    --priority_loss_weights 0 \
+    --session no-global-node
+
+# CoNLL-2014 ablation without the auxiliary priority loss
+python grid_search_gnn.py \
+    --exp_dir conll-exp \
+    --gold_m2 conll14st-test-corrected.m2 \
+    --layers 2 3 \
+    --context_layers_list 0 1 \
+    --lr_list 0.01 \
+    --priority_loss_weights 0 \
+    --session no-plw
+
+# BEA-2019 sweep with smaller hidden size and multiple priority weights
+python grid_search_gnn.py \
+    --exp_dir bea-exp \
+    --gold_m2 bea-full-valid.m2 \
+    --hidden_dims 64 \
+    --layers 2 3 \
+    --context_layers_list 0 1 \
+    --priority_loss_weights 0.2 0.4 0.6 \
+    --dropouts 0.1 \
+    --lr_list 0.01 \
+    --session main
+
+# Hypothesis-restriction sweep (vary number of base systems)
+python grid_search_gnn.py \
+    --exp_dir conll-exp \
+    --gold_m2 conll14st-test-corrected.m2 \
+    --layers 2 \
+    --context_layers_list 1 \
+    --lr_list 0.01 \
+    --max_hypotheses 1 2 3 4 5 \
+    --session restrict-hypo
+```
+
+Each invocation automatically trains every hyper-parameter combination implied by the flag lists, generates predictions for the appropriate split (`conll-exp/test-text` or `bea-exp/test-text`), scores them with `m2scorer` (or ERRANT for BEA), and records the metrics in `<exp_dir>/models/<session>/grid_results.csv`. Use `--dry_run` to inspect commands without executing them, and adjust `--gpus` if you have fewer than eight GPUs.
+
 ## Evaluation
-- For CoNLL-2014 (requires Python 2.x):
+- For CoNLL-2014:
 ```.bash
-python2 m2scorer/scripts/m2scorer.py test_output conll14st-test-corrected.m2
+python m2scorer/scripts/m2scorer.py test_output conll14st-test-corrected.m2
 ```
 - For BEA-2019:
 Compress the `test_output` into test.zip, then upload the zip file (only containing the prediction file without any folder or any other file) to https://competitions.codalab.org/competitions/20228#participate-get-data
