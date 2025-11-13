@@ -71,17 +71,17 @@ python grid_search_gnn.py \
     --layers 2 3 \
     --context_layers_list 0 1 \
     --lr_list 0.01 \
-    --priority_loss_weights 0.8 \
+    --priority_loss_weights 0.2 0.4 0.6 0.8 \
     --session main
 
-# CoNLL-2014 ablation without contextual/global node information
+# CoNLL-2014 ablation without contextual/global node information (the global node setting is in the run.py file)
 python grid_search_gnn.py \
     --exp_dir conll-exp \
     --gold_m2 conll14st-test-corrected.m2 \
     --layers 2 3 \
     --context_layers_list 0 1 \
     --lr_list 0.01 \
-    --priority_loss_weights 0 \
+    --priority_loss_weights 0.2 0.4 0.6 0.8 \
     --session no-global-node
 
 # CoNLL-2014 ablation without the auxiliary priority loss
@@ -94,15 +94,13 @@ python grid_search_gnn.py \
     --priority_loss_weights 0 \
     --session no-plw
 
-# BEA-2019 sweep with smaller hidden size and multiple priority weights
+# BEA-2019 sweep
 python grid_search_gnn.py \
     --exp_dir bea-exp \
     --gold_m2 bea-full-valid.m2 \
-    --hidden_dims 64 \
     --layers 2 3 \
     --context_layers_list 0 1 \
-    --priority_loss_weights 0.2 0.4 0.6 \
-    --dropouts 0.1 \
+    --priority_loss_weights 0.2 0.4 0.6 0.8 \
     --lr_list 0.01 \
     --session main
 
